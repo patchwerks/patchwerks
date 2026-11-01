@@ -1,0 +1,49 @@
+name: Contribution boundary qualification
+
+# This proposed workflow qualifies controlled fixtures. It cannot protect itself
+# against candidate workflow edits and is not a production acceptance gate.
+on:
+  pull_request:
+    paths:
+      - 'scripts/contribution_worker.py'
+      - 'scripts/verify_promotion.py'
+      - 'tests/test_contribution_worker.py'
+      - 'tests/hostile_worker_fixture.py'
+      - 'tests/test_verify_promotion.py'
+      - 'tests/contribution-boundary.feature'
+      - 'docs/contribution-boundary.md'
+      - '.github/workflows/contribution-boundary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  qualify-controlled-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.11'
+      - name: Provision immutable fixture image
+        shell: bash
+        run: |
+          fixture_home="$(mktemp -d)"
+          trap 'rm -rf "$fixture_home"' EXIT
+          env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$fixture_home" DOCKER_CONFIG="$fixture_home" \
+            docker pull python:3.12.11-bookworm@sha256:1b48a1b13ec678be8d84974541cc007d4367aaf01f985231daad1a940106efc0
+      - name: Qualify orchestration and real isolated hostile fixtures
+        shell: bash
+        run: |
+          fixture_home="$(mktemp -d)"
+          trap 'rm -rf "$fixture_home"' EXIT
+          mkdir "$fixture_home/tmp"
+          env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$fixture_home" TMPDIR="$fixture_home/tmp" \
+            GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null PATCHWERKS_DOCKER_TESTS=1 \
+            /opt/hostedtoolcache/Python/3.12.11/x64/bin/python -I -B -m unittest discover -s tests -p 'test_contribution_worker.py' -v
+          env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$fixture_home" TMPDIR="$fixture_home/tmp" \
+            GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+            /opt/hostedtoolcache/Python/3.12.11/x64/bin/python -I -B -m unittest discover -s tests -p 'test_verify_promotion.py' -v

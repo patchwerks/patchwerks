@@ -27,8 +27,42 @@ No new distributed scheduler, credential broker, execution daemon or state machi
 
 Append exact revisions and observed results during closeout. Product adapters, independent review identities and privileged/live execution are separate tracked work, not implied by this bootstrap.
 
+## PW-0.2 follow-up: contribution boundary qualification
+
+Canonical task: [issue #5](https://github.com/patchwerks/patchwerks/issues/5).
+This separate candidate starts from accepted `b99937e`; audit-helper PR #9 is
+independent and is not treated as accepted policy.
+
+Planned deliverables:
+
+- A bounded disposable worker loads its policy and checker from an explicitly
+  supplied accepted commit, reads an immutable candidate snapshot, and admits
+  no candidate-controlled policy, credentials, network or writable host mount.
+- Hostile fixtures exercise checker replacement, malicious names, simulated
+  dependency hooks, forged output, denied access, output limits and timeouts.
+- A read-only artifact preflight compares fresh GitHub repository, workflow,
+  head, attempt, review and artifact observations with accepted policy and the
+  actual archive digest. It never deploys or accepts an unsigned success file.
+- Actual qualification evidence distinguishes synthetic trusted-base fixtures,
+  observed container boundaries, local unit tests and independent acceptance.
+
+The fixtures use synthetic accepted revisions only to test selection behavior.
+No production policy is installed in this slice: an accepted revision missing
+the policy must refuse before executing a candidate. The initial implementation
+is not automatically trusted merely because its tests pass. Final installation
+requires independent policy/workflow review and the scoped identities tracked
+by issue #3. Live health/recovery remains with a separate authorized executor.
+
+TLA+ is not applicable: this slice adds no distributed claim or deployment state
+machine. Before/after GitHub observations detect stale inputs for this read-only
+preflight; they do not supply an atomic merge/deploy transaction. CLI behavior
+and negative boundary cases are specified in the paired qualification document
+and executable fixtures. No product runtime or physical acceptance is implied.
+
 ## Changelog
 
+- 2026-10-30: Added the bounded PW-0.2 / issue #5 implementation and qualification
+  plan; current dispatch and acceptance remain on the canonical GitHub issue.
 - 2026-10-29: PW-0.2 / [issue #5](https://github.com/patchwerks/patchwerks/issues/5)
   local follow-up adds hostile-input fixtures for the accepted audit helper and
   a minimal commit-object validation fix. See the [bounded evidence report](../../../../docs/hostile-audit-fixtures.md).
@@ -46,3 +80,9 @@ Append exact revisions and observed results during closeout. Product adapters, i
   replacements; three new regressions bring the canonical gate to 18 tests.
   The evidence report distinguishes local-metadata control from ordinary PR
   content and retains the broader CI/promotion acceptance limits.
+
+- 2026-11-01: Integrated accepted main `7c18f297` into the issue #5 candidate.
+  The original `b99937e` starting-point statement above records historical
+  scope; accepted main now includes the audit-helper fixes from PR #9 and scoped
+  identity work from PR #11. Both evidence histories are retained. Fresh
+  exact-head checks and independent review remain required.
