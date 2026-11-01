@@ -1,0 +1,57 @@
+name: Release qualification
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12.11'
+      - name: Provision verified official jj
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/qualification-tools"
+          curl --fail --location --proto '=https' --tlsv1.2 --max-time 120 \
+            https://github.com/jj-vcs/jj/releases/download/v0.46.0/jj-v0.46.0-x86_64-unknown-linux-musl.tar.gz \
+            -o "$RUNNER_TEMP/qualification-tools/jj.tar.gz"
+          printf '%s  %s\n' fce0271158e665ceb82dc66c5eb95b1728649094e9133074f3b5baece345fc08 \
+            "$RUNNER_TEMP/qualification-tools/jj.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/qualification-tools/jj.tar.gz" \
+            -C "$RUNNER_TEMP/qualification-tools" --no-same-owner --no-same-permissions ./jj
+          chmod 500 "$RUNNER_TEMP/qualification-tools/jj"
+      - name: Qualify local operations without credentials or network
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/qualification-home" "$RUNNER_TEMP/qualification-tmp"
+          python_bin="$(command -v python)"
+          runner_uid="$(id -u)"
+          runner_gid="$(id -g)"
+          sudo /usr/bin/unshare --net -- \
+            /usr/bin/setpriv --reuid="$runner_uid" --regid="$runner_gid" --clear-groups --no-new-privs \
+            /usr/bin/env -i \
+            HOME="$RUNNER_TEMP/qualification-home" \
+            TMPDIR="$RUNNER_TEMP/qualification-tmp" \
+            PATH="$(dirname "$python_bin"):/usr/bin:/bin" \
+            GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 \
+            PYTHONDONTWRITEBYTECODE=1 PATCHWERKS_JJ="$RUNNER_TEMP/qualification-tools/jj" \
+            "$python_bin" -m unittest discover -s tests -p 'test_*publication.py' -v
+          sudo /usr/bin/unshare --net -- \
+            /usr/bin/setpriv --reuid="$runner_uid" --regid="$runner_gid" --clear-groups --no-new-privs \
+            /usr/bin/env -i \
+            HOME="$RUNNER_TEMP/qualification-home" \
+            TMPDIR="$RUNNER_TEMP/qualification-tmp" \
+            PATH="$(dirname "$python_bin"):/usr/bin:/bin" \
+            GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 \
+            PYTHONDONTWRITEBYTECODE=1 \
+            "$python_bin" -m unittest discover -s tests -p 'test_release_preflight.py' -v
